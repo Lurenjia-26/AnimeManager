@@ -1,6 +1,5 @@
-import sys
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QMainWindow, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton,
+    QWidget, QMainWindow, QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton,
     QLabel, QScrollArea, QFrame, QSizePolicy
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
@@ -8,28 +7,33 @@ from RSSParser import RSSParser
 from Downloader import Downloader
 
 
+# noinspection PyUnresolvedReferences
 class SearchThread(QThread):
     results_ready = pyqtSignal(list)
 
-    def __init__(self, keywords):
+    def __init__(self, keywords, rss_config):
         super().__init__()
         self.keywords = keywords
+        self.RSS_config = rss_config
 
     def run(self):
-        anime_list = RSSParser().get_anime_list(self.keywords)
+        anime_list = RSSParser(self.RSS_config).get_anime_list(self.keywords)
         self.results_ready.emit(anime_list)
 
 
+# noinspection PyUnresolvedReferences
 class Application(QMainWindow):
-    def __init__(self):
+    def __init__(self, config_manager):
         super().__init__()
         self.setWindowTitle("Anime Manager")
         self.resize(1600, 900)
 
-        self.results_per_page = 30
+        self.configManager = config_manager
+        self.GUI_config = config_manager.get_config("GUI")
+        self.page_size = self.GUI_config["page_size"]
         self.current_page = 1
         self.anime_list = []
-        self.isSearching = False
+        self.is_searching = False
 
         # 主容器
         container = QWidget()
@@ -111,16 +115,16 @@ class Application(QMainWindow):
         """)
 
     def start_search(self):
-        if self.isSearching:
+        if self.is_searching:
             return
-        self.isSearching = True
+        self.is_searching = True
         self.anime_list.clear()
         self.current_page = 1
         self.clear_results()
 
         keywords = self.entry.text().strip().split()
         if not keywords:
-            self.isSearching = False
+            self.is_searching = False
             return
 
         # 搜索提示
@@ -131,13 +135,13 @@ class Application(QMainWindow):
         self.prev_btn.setEnabled(False)
         self.next_btn.setEnabled(False)
 
-        self.search_thread = SearchThread(keywords)
+        self.search_thread = SearchThread(keywords, self.configManager.get_config("RSSParser"))
         self.search_thread.results_ready.connect(self.on_results_ready)
         self.search_thread.start()
 
     def on_results_ready(self, results):
         self.anime_list = results
-        self.isSearching = False
+        self.is_searching = False
         self.search_btn.setEnabled(True)
         self.prev_btn.setEnabled(True)
         self.next_btn.setEnabled(True)
@@ -160,11 +164,11 @@ class Application(QMainWindow):
             return
 
         total_results = len(self.anime_list)
-        total_pages = (total_results + self.results_per_page - 1) // self.results_per_page
+        total_pages = (total_results + self.page_size - 1) // self.page_size
         self.current_page = max(1, min(self.current_page, total_pages))
 
-        start_idx = (self.current_page - 1) * self.results_per_page
-        end_idx = start_idx + self.results_per_page
+        start_idx = (self.current_page - 1) * self.page_size
+        end_idx = start_idx + self.page_size
 
         for anime in self.anime_list[start_idx:end_idx]:
             self.display_card(anime)
@@ -198,14 +202,7 @@ class Application(QMainWindow):
 
     def next_page(self):
         total_results = len(self.anime_list)
-        total_pages = (total_results + self.results_per_page - 1) // self.results_per_page
+        total_pages = (total_results + self.page_size - 1) // self.page_size
         if self.current_page < total_pages:
             self.current_page += 1
             self.show_page()
-
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = Application()
-    window.show()
-    sys.exit(app.exec())

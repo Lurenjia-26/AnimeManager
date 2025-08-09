@@ -1,0 +1,32 @@
+{
+    "RSSParser": {
+        "default": "anime_garden",
+        "resources": [
+            {
+                "name": "dmhy",
+                "url": "https://www.dmhy.org/topics/rss/rss.xml?keyword=",
+                "connect_word": "+"
+            },
+            {
+                "name": "anime_garden",
+                "url": "https://api.animes.garden/feed.xml?search=",
+                "connect_word": "&search="
+            }
+        ]
+    },
+    "Downloader": {
+        "default": "qbittorrent",
+        "download_clients": [
+            {
+                "name": "qbittorrent",
+                "host": "127.0.0.1",
+                "port": "8080",
+                "username": "admin",
+                "password": "123123"
+            }
+        ]
+    },
+    "GUI": {
+        "page_size": 20
+    }
+}

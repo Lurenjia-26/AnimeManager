@@ -1,8 +1,6 @@
-from RSSParser import RSSParser
 import qbittorrentapi
 
 class Downloader:
-    parser = RSSParser()
 
     # 调用本地 qBitTorrent 下载
     @staticmethod

@@ -3,12 +3,21 @@ import re
 
 
 class RSSParser:
-    feed_dmhy_base_url = "https://www.dmhy.org/topics/rss/rss.xml"
 
-    # 生成关键词搜索链接，适用于 dmhy
-    @staticmethod
-    def __generate_search_url(base_url: str, keywords: tuple) -> str:
-        search_url = base_url + "?keyword=" + "+".join(keywords)
+    def __init__(self, config):
+        self.config = config
+        default_resource = next(
+            (res for res in config["resources"] if res["name"] == config["default"]),
+            None
+        )
+        if not default_resource:
+            raise ValueError(f"未找到默认资源: {config["default"]}")
+        self.base_url = default_resource["url"]
+        self.connect_word = default_resource["connect_word"]
+
+    # 生成关键词搜索链接
+    def __generate_search_url(self, keywords: tuple) -> str:
+        search_url = self.base_url + self.connect_word.join(keywords)
         print("Searching URL: " + search_url)
         return search_url
 
@@ -19,8 +28,8 @@ class RSSParser:
         return feed
 
     # 获取特定的动画列表
-    @staticmethod
-    def __get_anime_list(feed: feedparser.FeedParserDict) -> list:
+    @classmethod
+    def __get_anime_list(cls, feed: feedparser.FeedParserDict) -> list:
         anime_list = []
         for idx, entry in enumerate(feed.entries):
             download_link = None
@@ -41,7 +50,7 @@ class RSSParser:
 
             anime_list.append({
                 "id": idx,
-                "title": RSSParser.__sanitize_filename(entry.title),
+                "title": cls.__sanitize_filename(entry.title),
                 "download_link": download_link
             })
 
@@ -53,10 +62,9 @@ class RSSParser:
         return re.sub(r"[\\/:*?\"<>|]", " ", filename)
 
     # 根据关键词获得指定动画列表
-    @staticmethod
-    def get_anime_list(*keywords) -> list:
+    def get_anime_list(self, *keywords) -> list:
         if len(keywords) == 1 and isinstance(keywords[0], list):
             keywords = keywords[0]
-        search_url = RSSParser.__generate_search_url(RSSParser.feed_dmhy_base_url, keywords)
-        feed = RSSParser.__parse_rss(search_url)
-        return RSSParser.__get_anime_list(feed)
+        search_url = self.__generate_search_url(keywords)
+        feed = self.__parse_rss(search_url)
+        return self.__get_anime_list(feed)
